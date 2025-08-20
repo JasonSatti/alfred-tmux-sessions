@@ -141,7 +141,6 @@ def format_time_ago(timestamp: int) -> str:
 
         return "just now"
     except (ValueError, OSError, OverflowError):
-        # Handles invalid timestamps and system time errors
         return "unknown"
 
 
@@ -168,12 +167,8 @@ def parse_session_line(line: str) -> Optional[Session]:
     try:
         return Session(
             name=parts[0],
-            windows=(
-                int(parts[1]) if parts[1].isdigit() else 1
-            ),  # Default to 1 window if output is non-numeric
-            created_timestamp=(
-                int(parts[2]) if parts[2].isdigit() else 0
-            ),  # Default to epoch if invalid
+            windows=int(parts[1]) if parts[1].isdigit() else 1,
+            created_timestamp=int(parts[2]) if parts[2].isdigit() else 0,
             is_attached=parts[3] == "1",
             activity_timestamp=int(parts[4]) if parts[4].isdigit() else int(parts[2]),
         )
@@ -200,7 +195,11 @@ def get_tmux_sessions() -> List[Session]:
             capture_output=True,
             text=True,
             check=True,
+            timeout=5,
         )
+
+        if not result.stdout.strip():
+            return []
 
         sessions = []
         for line in result.stdout.strip().split("\n"):
@@ -210,10 +209,10 @@ def get_tmux_sessions() -> List[Session]:
 
         return sessions
     except subprocess.CalledProcessError:
-        # tmux returns non-zero when no sessions exist
+        return []
+    except subprocess.TimeoutExpired:
         return []
     except FileNotFoundError:
-        # tmux not installed
         raise
 
 
@@ -293,8 +292,10 @@ def filter_and_sort_sessions(sessions: List[Session], query: str) -> List[Sessio
     """
     filtered = [s for s in sessions if not query or query.lower() in s.name.lower()]
 
-    # Attached sessions first, then by most recent activity
-    return sorted(filtered, key=lambda s: (not s.is_attached, -s.activity_timestamp))
+    return sorted(
+        filtered,
+        key=lambda s: (not s.is_attached, -s.activity_timestamp, s.name.lower()),
+    )
 
 
 def main() -> None:
@@ -312,14 +313,13 @@ def main() -> None:
 
         items: List[Dict[str, Any]] = [s.to_alfred_item() for s in filtered_sessions]
 
-        # Handle special cases
         if not items:
             if query:
                 items = [create_session_prompt(query)]
             else:
                 items = [create_empty_state_prompt()]
 
-        print(json.dumps({"items": items}))
+        print(json.dumps({"items": items}, ensure_ascii=False))
 
     except FileNotFoundError:
         print(
@@ -328,15 +328,15 @@ def main() -> None:
                     "items": [
                         {
                             "title": "tmux not found",
-                            "subtitle": "Please install tmux to use this workflow",
+                            "subtitle": "Install tmux: brew install tmux",
                             "valid": False,
                         }
                     ]
-                }
+                },
+                ensure_ascii=False,
             )
         )
     except Exception as e:
-        # Unexpected errors should still provide feedback
         print(
             json.dumps(
                 {
@@ -347,7 +347,8 @@ def main() -> None:
                             "valid": False,
                         }
                     ]
-                }
+                },
+                ensure_ascii=False,
             )
         )
 
