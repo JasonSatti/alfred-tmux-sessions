@@ -4,7 +4,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/JasonSatti/alfred-tmux-sessions)
 ![License](https://img.shields.io/github/license/JasonSatti/alfred-tmux-sessions)
 
-A powerful Alfred workflow for complete tmux session management. List, create, attach, detach, and delete sessions with rich status info via the `tmux` keyword.
+A powerful Alfred workflow for complete tmux session management with multi-terminal support (iTerm2, Ghostty, Terminal.app). List, create, attach, detach, and delete sessions with rich status info via the `tmux` keyword.
 
 ![Alfred Tmux Sessions Demo](screenshots/session-list.png)
 
@@ -12,14 +12,17 @@ A powerful Alfred workflow for complete tmux session management. List, create, a
 
 ### Requirements
 
-- macOS
-- [Alfred](https://www.alfredapp.com/) with Powerpack
-- [tmux](https://github.com/tmux/tmux) - Install via `brew install tmux`
-- [iTerm2](https://iterm2.com/) (recommended terminal)
+- macOS 10.14+
+- [Alfred](https://www.alfredapp.com/) 4.0+ with Powerpack
+- [tmux](https://github.com/tmux/tmux) 3.2+ - Install via `brew install tmux`
+- At least one supported terminal:
+  - [iTerm2](https://iterm2.com/) - Install via `brew install --cask iterm2`
+  - [Ghostty](https://ghostty.org/) - Install via `brew install --cask ghostty`
+  - Terminal.app (built-in fallback)
 
 ### Download
 
-1. Download the latest [tmux-sessions.alfredworkflow](../../releases/latest)
+1. Download the latest [Tmux Sessions Alfred Workflow](https://github.com/JasonSatti/alfred-tmux-sessions/releases/latest)
 2. Double-click the file to install in Alfred
 3. Grant necessary permissions when prompted
 
@@ -40,7 +43,7 @@ brew install tmux
 
 ### Actions
 
-* <kbd>⏎</kbd> **Attach to session** - Opens in new iTerm window
+* <kbd>⏎</kbd> **Attach to session** - Opens in new terminal window
 * <kbd>⌘</kbd><kbd>⏎</kbd> **Delete session** - Permanently removes the session
 * <kbd>⌃</kbd><kbd>⏎</kbd> **Detach from session** - Disconnects clients (attached sessions only)
 
@@ -50,7 +53,7 @@ Type `tmux` followed by a new session name to create it instantly:
 
 ![Create Session](screenshots/create-session.png)
 
-* <kbd>⏎</kbd> **Create and attach** - Creates the session and opens in iTerm
+* <kbd>⏎</kbd> **Create and attach** - Creates the session and opens in your configured terminal
 
 The workflow also provides:
 - **Input validation** to prevent invalid session names with helpful error messages
@@ -58,9 +61,31 @@ The workflow also provides:
 
 ## Configuration
 
-The workflow works out-of-the-box with no configuration required. However, you can:
+### Terminal Selection
 
-- **Customize notifications**: macOS notification settings control workflow feedback
+The workflow automatically detects your preferred terminal, but you can manually configure it:
+
+1. **Access Configuration**: Right-click the workflow in Alfred Preferences → "Configure Workflow..."
+2. **Terminal Application**: Choose from the dropdown:
+   - **Auto (Detect Best Available)** - Automatically selects iTerm2 → Ghostty → Terminal.app
+   - **iTerm** - Force iTerm2 usage
+   - **Ghostty** - Force Ghostty usage
+   - **Terminal** - Use built-in Terminal.app
+
+![Workflow Configuration](screenshots/workflow-config.png)
+
+### Ghostty Setup
+
+If using Ghostty, you'll need to grant both Accessibility and Automation permissions:
+
+1. Go to **System Settings** → **Privacy & Security** → **Accessibility**
+2. Add **Alfred** to the allowed applications
+3. Go to **System Settings** → **Privacy & Security** → **Automation**
+4. Allow **Alfred** to control **Ghostty**
+5. This enables the workflow to control Ghostty via GUI scripting
+
+### Additional Options
+
 - **Change keyword**: Alfred Preferences → Workflows → Tmux Sessions → Script Filter
 - **View logs**: Check `~/Library/Logs/Alfred/alfred-tmux-sessions.log` for debugging
 
@@ -72,9 +97,18 @@ The workflow works out-of-the-box with no configuration required. However, you c
 - Install tmux: `brew install tmux`
 - Verify installation: `tmux --version`
 
+**"Configured terminal not found"**
+- Verify your selected terminal is installed
+- Try switching to "Auto" detection in workflow configuration
+
+**Ghostty not responding**
+- Ensure Accessibility permissions are granted for Alfred
+- Check System Settings → Privacy & Security → Accessibility
+
 **"Session ended very soon after starting"**
-- Check your iTerm2 default profile settings
-- Ensure tmux is in your PATH
+- Check your terminal's default profile settings
+- Verify tmux is in your PATH: run `which tmux` and `echo $PATH`
+- For GUI applications, ensure PATH is set in `~/.zprofile` (zsh) or `~/.bash_profile` (bash)
 
 **Sessions not showing**
 - Verify tmux sessions exist: `tmux list-sessions`
@@ -82,7 +116,7 @@ The workflow works out-of-the-box with no configuration required. However, you c
 
 ## Limitations
 
-- Requires iTerm2 for optimal experience (Terminal.app may work but is untested)
+- Ghostty requires macOS Accessibility permissions for GUI scripting
 - Session names cannot contain spaces, dots, or colons (tmux limitation)
 - Detach action only works on sessions with active clients
 
@@ -90,7 +124,7 @@ The workflow works out-of-the-box with no configuration required. However, you c
 
 The workflow consists of:
 - **Python script** (`src/tmux-sessions.py`) - Session listing and filtering
-- **AppleScript** (`src/tmux-action.scpt`) - Session operations and iTerm integration
+- **AppleScript** (`src/tmux-action.scpt`) - Session operations and multi-terminal integration
 
 ### Building from Source
 
