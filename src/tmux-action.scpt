@@ -1,17 +1,17 @@
 (*
     Alfred Tmux Sessions - Action Handler
-    
+
     Handles all tmux session actions triggered from Alfred with production-ready
     reliability, enhanced error handling, and user feedback.
-    
+
     Actions:
-    - attach: Opens existing session in new terminal window (default)
+    - attach: Opens existing session in focused terminal window or creates new window (default)
     - create: Creates new session and opens it
     - delete: Removes a tmux session
     - detach: Detaches from an active session
-    
+
     Supported Terminals: iTerm2, Ghostty, Terminal.app
-    
+
     Author: Jason Satti
     License: MIT
 *)
@@ -26,10 +26,12 @@ property GHOSTTY_WINDOW_DELAY : 0.3
 property GHOSTTY_COMMAND_DELAY : 0.1
 property ALFRED_REOPEN_DELAY : 0.3
 
-property INVALID_SESSION_CHARS : {".", ":", " ", "\n", "\t"}
+property INVALID_SESSION_CHARS : {".", ":", " ", "\n", "\t", "'", "\\"}
+property MAX_SESSION_NAME_LENGTH : 100
 
 on isValidSessionName(sessionName)
     if sessionName is "" then return false
+    if length of sessionName > MAX_SESSION_NAME_LENGTH then return false
     repeat with char in INVALID_SESSION_CHARS
         if sessionName contains char then return false
     end repeat
@@ -72,7 +74,7 @@ end getAvailableTerminal
 
 on resolveTerminal()
     set configuredTerminal to getConfiguredTerminal()
-    
+
     if configuredTerminal is "auto" then
         set selectedTerminal to getAvailableTerminal()
         if selectedTerminal is missing value then
@@ -93,7 +95,7 @@ on resolveTerminal()
             set normalizedTerminal to "Terminal"
             set appToCheck to "Terminal"
         end if
-        
+
         if not applicationIsInstalled(appToCheck) then
             display notification "Configured terminal '" & configuredTerminal & "' not found. Using auto-detection." with title "Tmux Sessions"
             return getAvailableTerminal()
@@ -101,6 +103,27 @@ on resolveTerminal()
         return normalizedTerminal
     end if
 end resolveTerminal
+
+on isTerminalRunningAndFrontmost(terminalName)
+    try
+        tell application "System Events"
+            set frontApp to name of first application process whose frontmost is true
+
+            -- Handle app name variations
+            if terminalName is "iTerm" then
+                return frontApp is "iTerm2" or frontApp is "iTerm"
+            else if terminalName is "Terminal" then
+                return frontApp is "Terminal"
+            else if terminalName is "Ghostty" then
+                return frontApp is "Ghostty"
+            end if
+        end tell
+    on error
+        return false
+    end try
+
+    return false
+end isTerminalRunningAndFrontmost
 
 on run argv
     if (count of argv) is 0 then return
@@ -116,7 +139,11 @@ on run argv
         end if
         
         if not isValidSessionName(sessionName) then
-            display notification "Invalid session name '" & sessionName & "'. Names cannot contain spaces, dots, or colons." with title "Tmux Error"
+            if length of sessionName > MAX_SESSION_NAME_LENGTH then
+                display notification "Session name too long (" & (length of sessionName) & " chars). Maximum is " & MAX_SESSION_NAME_LENGTH & "." with title "Tmux Error"
+            else
+                display notification "Invalid session name '" & sessionName & "'. Names cannot contain spaces, dots, colons, quotes, or backslashes." with title "Tmux Error"
+            end if
             return
         end if
         
@@ -189,10 +216,10 @@ end detachSession
 
 on createSession(sessionName)
     try
-        -- Create detached to avoid terminal race conditions, start in ~
+        -- Create detached to avoid terminal race conditions, start in home directory
         do shell script "cd ~ && tmux new-session -d -s " & quoted form of sessionName
         my openTerminalSession(sessionName)
-        
+
     on error errorMessage
         if errorMessage contains "duplicate session" then
             display notification "Session '" & sessionName & "' already exists" with title "Tmux Error"
@@ -234,18 +261,28 @@ end openTerminalSession
 on openInITerm(sessionName)
     try
         tell application "iTerm"
-            activate
-            
-            set newWindow to (create window with default profile)
-            
-            -- Window needs time to initialize before accepting commands
-            delay WINDOW_INIT_DELAY
-            
-            tell current session of newWindow
-                write text "tmux attach-session -t " & quoted form of sessionName
-            end tell
+            -- Check if iTerm is already frontmost with a window
+            if my isTerminalRunningAndFrontmost("iTerm") and (count of windows) > 0 then
+                -- Use current window/session
+                tell current window
+                    tell current session
+                        write text "tmux attach-session -t " & quoted form of sessionName
+                    end tell
+                end tell
+            else
+                -- Create new window
+                activate
+                set newWindow to (create window with default profile)
+
+                -- Window needs time to initialize before accepting commands
+                delay WINDOW_INIT_DELAY
+
+                tell current session of newWindow
+                    write text "tmux attach-session -t " & quoted form of sessionName
+                end tell
+            end if
         end tell
-        
+
     on error errorMessage
         display notification "Failed to open iTerm: " & errorMessage with title "iTerm Error"
     end try
@@ -254,28 +291,32 @@ end openInITerm
 -- GUI scripting required due to lack of native AppleScript support
 on openInGhostty(sessionName)
     try
+        -- Check if Ghostty is already frontmost
+        set isFrontmost to my isTerminalRunningAndFrontmost("Ghostty")
+
         tell application "Ghostty"
             activate
         end tell
-        
+
         delay GHOSTTY_APP_DELAY
-        
+
         tell application "System Events"
             tell process "Ghostty"
-                -- Check if we need a new window by counting existing windows
                 set windowCount to count of windows
-                if windowCount is 0 then
+
+                -- Create new window only if none exist or Ghostty wasn't frontmost
+                if windowCount is 0 or not isFrontmost then
                     keystroke "n" using {command down}
                     delay GHOSTTY_WINDOW_DELAY
                 end if
-                
+
                 -- Command injection protection via quoted form
                 keystroke "tmux attach-session -t " & quoted form of sessionName
                 delay GHOSTTY_COMMAND_DELAY
                 key code 36
             end tell
         end tell
-        
+
     on error errorMessage
         display notification "Failed to open Ghostty: " & errorMessage with title "Ghostty Error"
     end try
@@ -284,10 +325,17 @@ end openInGhostty
 on openInTerminal(sessionName)
     try
         tell application "Terminal"
-            activate
-            do script "tmux attach-session -t " & quoted form of sessionName
+            -- Check if Terminal is already frontmost with a window
+            if my isTerminalRunningAndFrontmost("Terminal") and (count of windows) > 0 then
+                -- Use current window
+                do script "tmux attach-session -t " & quoted form of sessionName in front window
+            else
+                -- Create new window
+                activate
+                do script "tmux attach-session -t " & quoted form of sessionName
+            end if
         end tell
-        
+
     on error errorMessage
         display notification "Failed to open Terminal: " & errorMessage with title "Terminal Error"
     end try

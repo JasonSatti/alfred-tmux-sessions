@@ -43,7 +43,7 @@ brew install tmux
 
 ### Actions
 
-* <kbd>⏎</kbd> **Attach to session** - Opens in new terminal window
+* <kbd>⏎</kbd> **Attach to session** - Opens in focused terminal window or creates new window
 * <kbd>⌘</kbd><kbd>⏎</kbd> **Delete session** - Permanently removes the session
 * <kbd>⌃</kbd><kbd>⏎</kbd> **Detach from session** - Disconnects clients (attached sessions only)
 
@@ -117,7 +117,7 @@ If using Ghostty, you'll need to grant both Accessibility and Automation permiss
 ## Limitations
 
 - Ghostty requires macOS Accessibility permissions for GUI scripting
-- Session names cannot contain spaces, dots, or colons (tmux limitation)
+- Session names cannot contain spaces, dots, colons, quotes, or backslashes (max 100 characters)
 - Detach action only works on sessions with active clients
 
 ## Development
