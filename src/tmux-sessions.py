@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Alfred workflow script for listing and managing tmux sessions."""
 
+from __future__ import annotations
+
 import json
 import subprocess
 import sys
@@ -8,7 +10,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-INVALID_SESSION_CHARS = {".", ":", " ", "\n", "\t"}
+INVALID_SESSION_CHARS = {".", ":", " ", "\n", "\t", "'", "\\"}
+MAX_SESSION_NAME_LENGTH = 100
 TMUX_FORMAT = "#{session_name}|#{session_windows}|#{session_created}|#{session_attached}|#{session_activity}"
 
 
@@ -229,7 +232,11 @@ def is_valid_session_name(name: str) -> bool:
     bool
         True if name is valid for tmux, False otherwise
     """
-    return bool(name) and not any(char in name for char in INVALID_SESSION_CHARS)
+    return (
+        bool(name)
+        and len(name) <= MAX_SESSION_NAME_LENGTH
+        and not any(char in name for char in INVALID_SESSION_CHARS)
+    )
 
 
 def create_session_prompt(query: str) -> Dict[str, Any]:
@@ -253,9 +260,16 @@ def create_session_prompt(query: str) -> Dict[str, Any]:
             "icon": {"path": "icon.png"},
         }
 
+    if len(query) > MAX_SESSION_NAME_LENGTH:
+        return {
+            "title": f'Session name too long ({len(query)} chars)',
+            "subtitle": f"Maximum length is {MAX_SESSION_NAME_LENGTH} characters",
+            "valid": False,
+        }
+
     return {
         "title": f'Invalid session name "{query}"',
-        "subtitle": "Session names cannot contain spaces, dots, or colons",
+        "subtitle": "Session names cannot contain spaces, dots, colons, quotes, or backslashes",
         "valid": False,
     }
 

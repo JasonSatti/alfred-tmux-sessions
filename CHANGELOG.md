@@ -5,6 +5,21 @@ All notable changes to Alfred Tmux Sessions will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-10-13
+
+### Added
+- **Focus Window Reuse** - Sessions now open in the currently focused terminal window instead of always creating new windows
+- **Session Name Length Validation** - Maximum 100 character limit with clear error messages
+- **Enhanced Character Validation** - Restricted single quotes and backslashes in session names
+
+### Improved
+- **Security** - Strengthened input validation prevents command injection vulnerabilities
+- **Code Quality** - Added Python future annotations for better type compatibility
+- **Error Messages** - More specific feedback for validation failures (length vs invalid characters)
+
+### Fixed
+- **Ghostty Logic** - Cleaned up redundant window creation checks
+
 ## [2.0.0] - 2025-08-20
 
 ### Added
