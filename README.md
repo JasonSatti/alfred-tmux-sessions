@@ -44,6 +44,7 @@ brew install tmux
 ### Actions
 
 * <kbd>⏎</kbd> **Attach to session** - Opens in focused terminal window or creates new window
+* <kbd>⇧</kbd><kbd>⏎</kbd> **Open linked session** - Creates a linked session (e.g., `session@2`) with independent window navigation - perfect for viewing different windows in separate terminal windows
 * <kbd>⌘</kbd><kbd>⏎</kbd> **Delete session** - Permanently removes the session
 * <kbd>⌃</kbd><kbd>⏎</kbd> **Detach from session** - Disconnects clients (attached sessions only)
 
@@ -58,6 +59,20 @@ Type `tmux` followed by a new session name to create it instantly:
 The workflow also provides:
 - **Input validation** to prevent invalid session names with helpful error messages
 - **Rich notifications** with success and error feedback for all operations
+
+### Linked Sessions
+
+Linked sessions (also called grouped sessions) share the same windows and content as the base session but allow independent window navigation. This is perfect for:
+
+- **Multi-monitor setups** - View different windows of the same session on different monitors
+- **Split workflows** - Keep Claude Code visible in one window while running commands in another
+- **Collaborative work** - Multiple views of the same session without forcing synchronized navigation
+
+**Example:**
+- Base session: `corpit-lambdas-feature`
+- Linked sessions: `corpit-lambdas-feature@2`, `corpit-lambdas-feature@3`
+
+Each linked session can navigate to different windows independently, but all changes (new windows, pane content, etc.) are shared across all linked sessions.
 
 ## Configuration
 

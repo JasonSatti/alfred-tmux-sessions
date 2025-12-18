@@ -110,6 +110,10 @@ class Session:
                     "arg": f"detach:{self.name}",
                     "valid": self.is_attached,
                 },
+                "shift": {
+                    "subtitle": f"Open linked session for {self.name} (independent navigation)",
+                    "arg": f"attach-linked:{self.name}",
+                },
             },
         }
 

@@ -155,6 +155,8 @@ on run argv
             my createSession(sessionName)
         else if action is "attach" then
             my attachSession(sessionName)
+        else if action is "attach-linked" then
+            my attachLinkedSession(sessionName)
         else
             display notification "Unknown action: " & action with title "Tmux Error"
         end if
@@ -238,6 +240,43 @@ on attachSession(sessionName)
         display notification "Session '" & sessionName & "' not found" with title "Tmux Error"
     end try
 end attachSession
+
+on attachLinkedSession(sessionName)
+    try
+        -- Check if base session exists
+        do shell script "tmux has-session -t " & quoted form of sessionName & " 2>/dev/null"
+
+        -- Find next available number by checking existing linked sessions
+        set linkedNumber to 2
+        repeat
+            set linkedSessionName to sessionName & "@" & linkedNumber
+            try
+                do shell script "tmux has-session -t " & quoted form of linkedSessionName & " 2>/dev/null"
+                -- Session exists, try next number
+                set linkedNumber to linkedNumber + 1
+            on error
+                -- Session doesn't exist, use this name
+                exit repeat
+            end try
+        end repeat
+
+        -- Create linked session (grouped session with independent navigation)
+        do shell script "tmux new-session -d -t " & quoted form of sessionName & " -s " & quoted form of linkedSessionName
+
+        -- Open the linked session in terminal
+        my openTerminalSession(linkedSessionName)
+
+    on error errorMessage
+        if errorMessage contains "session not found" then
+            display notification "Base session '" & sessionName & "' not found" with title "Tmux Error"
+        else if errorMessage contains "duplicate session" then
+            display notification "Linked session already exists, attaching..." with title "Tmux"
+            my openTerminalSession(sessionName)
+        else
+            display notification "Failed to create linked session: " & errorMessage with title "Tmux Error"
+        end if
+    end try
+end attachLinkedSession
 
 on openTerminalSession(sessionName)
     try

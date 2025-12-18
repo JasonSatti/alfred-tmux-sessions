@@ -5,6 +5,18 @@ All notable changes to Alfred Tmux Sessions will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-12-18
+
+### Added
+- **Linked Sessions** - New SHIFT modifier creates grouped sessions with independent window navigation
+  - Smart numbering system (`session@2`, `@3`, etc.) for linked session names
+  - Perfect for multi-monitor setups and viewing different windows simultaneously
+  - Each linked session shares the same content but can navigate independently
+
+### Improved
+- **Documentation** - Added comprehensive linked sessions guide with use cases
+- **Session Naming** - Clean `@2` suffix convention recommended by Codex for clarity
+
 ## [2.1.0] - 2025-10-13
 
 ### Added
