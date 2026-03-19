@@ -5,6 +5,13 @@ All notable changes to Alfred Tmux Sessions will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-03-19
+
+### Fixed
+- **Shell Environment** - New sessions now detect and use the terminal's actual shell instead of defaulting to macOS `/bin/zsh`. Adds `default_shell` workflow variable as an optional override.
+- **Linked Session Error Handling** - Removed unreachable duplicate session catch that would have attached to the wrong (base) session
+- **Activity Timestamp Parsing** - Added missing guard for non-numeric activity timestamps to prevent sessions from being silently dropped
+
 ## [2.2.0] - 2025-12-18
 
 ### Added

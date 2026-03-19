@@ -125,6 +125,11 @@ If using Ghostty, you'll need to grant both Accessibility and Automation permiss
 - Verify tmux is in your PATH: run `which tmux` and `echo $PATH`
 - For GUI applications, ensure PATH is set in `~/.zprofile` (zsh) or `~/.bash_profile` (bash)
 
+**"New sessions use the wrong shell"**
+- The workflow auto-detects your terminal's running shell, but on some macOS login-shell setups the exact executable path can't be recovered reliably
+- If your terminal uses a custom shell binary (e.g., Homebrew bash or fish), set the `default_shell` workflow variable to the full path (e.g., `/opt/homebrew/bin/bash`)
+- Alternatively, add `set -g default-shell /path/to/your/shell` to your `~/.tmux.conf`
+
 **Sessions not showing**
 - Verify tmux sessions exist: `tmux list-sessions`
 - Check the debug log at `~/Library/Logs/Alfred/alfred-tmux-sessions.log`

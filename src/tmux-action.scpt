@@ -18,6 +18,7 @@
 
 -- Can be overridden by Alfred workflow environment variable: terminal_app
 property defaultTerminal : "auto"
+property defaultShell : "auto"
 
 -- GUI timing delays to handle application startup and UI responsiveness
 property WINDOW_INIT_DELAY : 0.2
@@ -49,6 +50,18 @@ on getConfiguredTerminal()
     
     return defaultTerminal
 end getConfiguredTerminal
+
+on getConfiguredShell()
+    try
+        set shellPath to (system attribute "default_shell")
+        if shellPath is not "" then
+            return shellPath
+        end if
+    on error
+    end try
+
+    return defaultShell
+end getConfiguredShell
 
 on applicationIsInstalled(appName)
     try
@@ -218,16 +231,16 @@ end detachSession
 
 on createSession(sessionName)
     try
-        -- Create detached to avoid terminal race conditions, start in home directory
-        do shell script "cd ~ && tmux new-session -d -s " & quoted form of sessionName
-        my openTerminalSession(sessionName)
-
-    on error errorMessage
-        if errorMessage contains "duplicate session" then
-            display notification "Session '" & sessionName & "' already exists" with title "Tmux Error"
-        else
+        -- Check if session already exists before opening terminal
+        do shell script "tmux has-session -t " & quoted form of sessionName & " 2>/dev/null"
+        display notification "Session '" & sessionName & "' already exists" with title "Tmux Error"
+    on error
+        try
+            set cmd to my buildHelperCommand("create " & quoted form of sessionName)
+            my openTerminalSession(cmd)
+        on error errorMessage
             display notification "Failed to create '" & sessionName & "': " & errorMessage with title "Tmux Error"
-        end if
+        end try
     end try
 end createSession
 
@@ -235,9 +248,15 @@ on attachSession(sessionName)
     try
         -- Prevent terminal flash if session doesn't exist
         do shell script "tmux has-session -t " & quoted form of sessionName & " 2>/dev/null"
-        my openTerminalSession(sessionName)
     on error
         display notification "Session '" & sessionName & "' not found" with title "Tmux Error"
+        return
+    end try
+    try
+        set cmd to my buildHelperCommand("attach " & quoted form of sessionName)
+        my openTerminalSession(cmd)
+    on error errorMessage
+        display notification "Failed to attach '" & sessionName & "': " & errorMessage with title "Tmux Error"
     end try
 end attachSession
 
@@ -260,44 +279,65 @@ on attachLinkedSession(sessionName)
             end try
         end repeat
 
-        -- Create linked session (grouped session with independent navigation)
-        do shell script "tmux new-session -d -t " & quoted form of sessionName & " -s " & quoted form of linkedSessionName
-
-        -- Open the linked session in terminal
-        my openTerminalSession(linkedSessionName)
+        set cmd to my buildHelperCommand("link " & quoted form of sessionName & " " & quoted form of linkedSessionName)
+        my openTerminalSession(cmd)
 
     on error errorMessage
         if errorMessage contains "session not found" then
             display notification "Base session '" & sessionName & "' not found" with title "Tmux Error"
-        else if errorMessage contains "duplicate session" then
-            display notification "Linked session already exists, attaching..." with title "Tmux"
-            my openTerminalSession(sessionName)
         else
             display notification "Failed to create linked session: " & errorMessage with title "Tmux Error"
         end if
     end try
 end attachLinkedSession
 
-on openTerminalSession(sessionName)
+on resolveTmuxPath()
+    return do shell script "which tmux"
+end resolveTmuxPath
+
+on buildHelperCommand(helperArgs)
+    set tmuxPath to my resolveTmuxPath()
+    set helperDest to "/tmp/ats"
+
+    -- Write helper with tmux path baked in so the terminal command stays short
+    set helperContent to "#!/bin/sh
+T='" & tmuxPath & "'; ACTION=\"$1\"; shift
+detect_shell() { if [ -n \"$1\" ]; then printf '%s' \"$1\"; else p=$(ps -p \"$PPID\" -o args= 2>/dev/null | awk '{print $1}' | sed 's/^-//'); if [ \"${p#/}\" != \"$p\" ]; then printf '%s' \"$p\"; else r=$(command -v \"$p\" 2>/dev/null); [ -n \"$r\" ] && printf '%s' \"$r\" || printf '%s' /bin/sh; fi; fi; }
+case \"$ACTION\" in
+create) s=\"$1\"; d=$(detect_shell \"$2\"); \"$T\" new-session -d -s \"$s\" -c \"$HOME\" \"exec \\\"$d\\\" -l\" && \"$T\" set-option -t \"$s\" default-shell \"$d\" && { rm -f \"$0\"; exec \"$T\" attach-session -t \"$s\"; };;
+link) b=\"$1\"; l=\"$2\"; d=$(detect_shell \"$3\"); \"$T\" new-session -d -t \"$b\" -s \"$l\" && \"$T\" set-option -t \"$l\" default-shell \"$d\" && { rm -f \"$0\"; exec \"$T\" attach-session -t \"$l\"; };;
+attach) rm -f \"$0\"; exec \"$T\" attach-session -t \"$1\";;
+esac"
+    do shell script "printf '%s' " & quoted form of helperContent & " > " & helperDest & " && chmod +x " & helperDest
+
+    set cmd to helperDest & " " & helperArgs
+    set configuredShell to my getConfiguredShell()
+    if configuredShell is not "auto" then
+        set cmd to cmd & " " & quoted form of configuredShell
+    end if
+    return cmd
+end buildHelperCommand
+
+on openTerminalSession(terminalCommand)
     try
         set selectedTerminal to resolveTerminal()
-        
+
         if selectedTerminal is "iTerm" then
-            my openInITerm(sessionName)
+            my openInITerm(terminalCommand)
         else if selectedTerminal is "Ghostty" then
-            my openInGhostty(sessionName)
+            my openInGhostty(terminalCommand)
         else if selectedTerminal is "Terminal" then
-            my openInTerminal(sessionName)
+            my openInTerminal(terminalCommand)
         else
             error "Unsupported terminal: " & selectedTerminal
         end if
-        
+
     on error errorMessage
         display notification "Failed to open terminal session: " & errorMessage with title "Terminal Error"
     end try
 end openTerminalSession
 
-on openInITerm(sessionName)
+on openInITerm(tmuxCommand)
     try
         tell application "iTerm"
             -- Check if iTerm is already frontmost with a window
@@ -305,7 +345,7 @@ on openInITerm(sessionName)
                 -- Use current window/session
                 tell current window
                     tell current session
-                        write text "tmux attach-session -t " & quoted form of sessionName
+                        write text tmuxCommand
                     end tell
                 end tell
             else
@@ -317,7 +357,7 @@ on openInITerm(sessionName)
                 delay WINDOW_INIT_DELAY
 
                 tell current session of newWindow
-                    write text "tmux attach-session -t " & quoted form of sessionName
+                    write text tmuxCommand
                 end tell
             end if
         end tell
@@ -328,7 +368,7 @@ on openInITerm(sessionName)
 end openInITerm
 
 -- GUI scripting required due to lack of native AppleScript support
-on openInGhostty(sessionName)
+on openInGhostty(tmuxCommand)
     try
         -- Check if Ghostty is already frontmost
         set isFrontmost to my isTerminalRunningAndFrontmost("Ghostty")
@@ -349,8 +389,7 @@ on openInGhostty(sessionName)
                     delay GHOSTTY_WINDOW_DELAY
                 end if
 
-                -- Command injection protection via quoted form
-                keystroke "tmux attach-session -t " & quoted form of sessionName
+                keystroke tmuxCommand
                 delay GHOSTTY_COMMAND_DELAY
                 key code 36
             end tell
@@ -361,17 +400,17 @@ on openInGhostty(sessionName)
     end try
 end openInGhostty
 
-on openInTerminal(sessionName)
+on openInTerminal(tmuxCommand)
     try
         tell application "Terminal"
             -- Check if Terminal is already frontmost with a window
             if my isTerminalRunningAndFrontmost("Terminal") and (count of windows) > 0 then
                 -- Use current window
-                do script "tmux attach-session -t " & quoted form of sessionName in front window
+                do script tmuxCommand in front window
             else
                 -- Create new window
                 activate
-                do script "tmux attach-session -t " & quoted form of sessionName
+                do script tmuxCommand
             end if
         end tell
 
