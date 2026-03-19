@@ -177,7 +177,7 @@ def parse_session_line(line: str) -> Optional[Session]:
             windows=int(parts[1]) if parts[1].isdigit() else 1,
             created_timestamp=int(parts[2]) if parts[2].isdigit() else 0,
             is_attached=parts[3] == "1",
-            activity_timestamp=int(parts[4]) if parts[4].isdigit() else int(parts[2]),
+            activity_timestamp=int(parts[4]) if parts[4].isdigit() else (int(parts[2]) if parts[2].isdigit() else 0),
         )
     except (ValueError, IndexError):
         return None
