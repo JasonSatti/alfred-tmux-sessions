@@ -248,10 +248,15 @@ on attachSession(sessionName)
     try
         -- Prevent terminal flash if session doesn't exist
         do shell script "tmux has-session -t " & quoted form of sessionName & " 2>/dev/null"
-        set tmuxPath to my resolveTmuxPath()
-        my openTerminalSession(tmuxPath & " attach-session -t " & quoted form of sessionName)
     on error
         display notification "Session '" & sessionName & "' not found" with title "Tmux Error"
+        return
+    end try
+    try
+        set cmd to my buildHelperCommand("attach " & quoted form of sessionName)
+        my openTerminalSession(cmd)
+    on error errorMessage
+        display notification "Failed to attach '" & sessionName & "': " & errorMessage with title "Tmux Error"
     end try
 end attachSession
 
@@ -299,9 +304,9 @@ on buildHelperCommand(helperArgs)
 T='" & tmuxPath & "'; ACTION=\"$1\"; shift
 detect_shell() { if [ -n \"$1\" ]; then printf '%s' \"$1\"; else p=$(ps -p \"$PPID\" -o args= 2>/dev/null | awk '{print $1}' | sed 's/^-//'); if [ \"${p#/}\" != \"$p\" ]; then printf '%s' \"$p\"; else r=$(command -v \"$p\" 2>/dev/null); [ -n \"$r\" ] && printf '%s' \"$r\" || printf '%s' /bin/sh; fi; fi; }
 case \"$ACTION\" in
-create) s=\"$1\"; d=$(detect_shell \"$2\"); \"$T\" new-session -d -s \"$s\" -c \"$HOME\" \"exec \\\"$d\\\" -l\" && \"$T\" set-option -t \"$s\" default-shell \"$d\" && exec \"$T\" attach-session -t \"$s\";;
-link) b=\"$1\"; l=\"$2\"; d=$(detect_shell \"$3\"); \"$T\" new-session -d -t \"$b\" -s \"$l\" && \"$T\" set-option -t \"$l\" default-shell \"$d\" && exec \"$T\" attach-session -t \"$l\";;
-attach) exec \"$T\" attach-session -t \"$1\";;
+create) s=\"$1\"; d=$(detect_shell \"$2\"); \"$T\" new-session -d -s \"$s\" -c \"$HOME\" \"exec \\\"$d\\\" -l\" && \"$T\" set-option -t \"$s\" default-shell \"$d\" && { rm -f \"$0\"; exec \"$T\" attach-session -t \"$s\"; };;
+link) b=\"$1\"; l=\"$2\"; d=$(detect_shell \"$3\"); \"$T\" new-session -d -t \"$b\" -s \"$l\" && \"$T\" set-option -t \"$l\" default-shell \"$d\" && { rm -f \"$0\"; exec \"$T\" attach-session -t \"$l\"; };;
+attach) rm -f \"$0\"; exec \"$T\" attach-session -t \"$1\";;
 esac"
     do shell script "printf '%s' " & quoted form of helperContent & " > " & helperDest & " && chmod +x " & helperDest
 
