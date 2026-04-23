@@ -339,23 +339,30 @@ end openTerminalSession
 
 on openInITerm(tmuxCommand)
     try
+        -- Detect whether iTerm is already running; activating a cold iTerm
+        -- auto-creates a default window, so creating another would yield two.
+        tell application "System Events"
+            set itermRunning to (exists (processes where name is "iTerm2")) or (exists (processes where name is "iTerm"))
+        end tell
+
         tell application "iTerm"
-            -- Check if iTerm is already frontmost with a window
-            if my isTerminalRunningAndFrontmost("iTerm") and (count of windows) > 0 then
+            activate
+
+            if not itermRunning then
+                -- iTerm just launched and auto-created a window; reuse it
+                delay WINDOW_INIT_DELAY
+                tell current session of current window
+                    write text tmuxCommand
+                end tell
+            else if my isTerminalRunningAndFrontmost("iTerm") and (count of windows) > 0 then
                 -- Use current window/session
-                tell current window
-                    tell current session
-                        write text tmuxCommand
-                    end tell
+                tell current session of current window
+                    write text tmuxCommand
                 end tell
             else
-                -- Create new window
-                activate
+                -- iTerm running but not frontmost or no windows: create one
                 set newWindow to (create window with default profile)
-
-                -- Window needs time to initialize before accepting commands
                 delay WINDOW_INIT_DELAY
-
                 tell current session of newWindow
                     write text tmuxCommand
                 end tell
