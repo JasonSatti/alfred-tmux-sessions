@@ -377,7 +377,12 @@ end openInITerm
 -- GUI scripting required due to lack of native AppleScript support
 on openInGhostty(tmuxCommand)
     try
-        -- Check if Ghostty is already frontmost
+        -- Detect whether Ghostty is already running; activating a cold Ghostty
+        -- auto-creates a default window, so cmd+n would yield two.
+        tell application "System Events"
+            set ghosttyRunning to exists (processes where name is "Ghostty")
+        end tell
+
         set isFrontmost to my isTerminalRunningAndFrontmost("Ghostty")
 
         tell application "Ghostty"
@@ -390,8 +395,10 @@ on openInGhostty(tmuxCommand)
             tell process "Ghostty"
                 set windowCount to count of windows
 
-                -- Create new window only if none exist or Ghostty wasn't frontmost
-                if windowCount is 0 or not isFrontmost then
+                -- Only spawn a new window when Ghostty was already running and
+                -- doesn't have a usable frontmost window. On cold launch, reuse
+                -- the window that activate just created.
+                if ghosttyRunning and (windowCount is 0 or not isFrontmost) then
                     keystroke "n" using {command down}
                     delay GHOSTTY_WINDOW_DELAY
                 end if
