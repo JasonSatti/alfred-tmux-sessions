@@ -53,7 +53,12 @@ jobs:
           ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
       - name: Install application dictionaries
-        run: brew install --cask alfred ghostty iterm2
+        run: |
+          brew install --cask alfred ghostty iterm2
+          # A fresh runner has not discovered the installed apps through Finder.
+          for app in '/Applications/Alfred 5.app' /Applications/Ghostty.app /Applications/iTerm.app; do
+            /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+          done
       - name: Compile without executing terminal actions
         run: python3 scripts/check_applescript.py --include-iterm
 
@@ -69,7 +74,11 @@ jobs:
           ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
       - name: Install application dictionaries except iTerm
-        run: brew install --cask alfred ghostty
+        run: |
+          brew install --cask alfred ghostty
+          for app in '/Applications/Alfred 5.app' /Applications/Ghostty.app; do
+            /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+          done
       - name: Verify this runner has no iTerm installation
         run: |
           if mdfind 'kMDItemCFBundleIdentifier == "com.googlecode.iterm2"' | grep -q . || [ -d /Applications/iTerm.app ]; then
