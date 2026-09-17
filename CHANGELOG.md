@@ -5,6 +5,12 @@ All notable changes to Alfred Tmux Sessions will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Compile Failure Without iTerm** - The action script's `tell application "iTerm"` block requires iTerm's scripting dictionary at compile time, so on machines without iTerm installed the whole action failed to compile and no attach/create/delete action ran at all. The iTerm branch is now compiled lazily via `run script`, so the workflow works with Ghostty or Terminal.app alone.
+- **Attach From Inside tmux** - Attaching typed `tmux attach` into the frontmost terminal window. If that window was already inside a tmux session, tmux refused to nest and the keystrokes landed in whatever program was running in the pane. Attach now uses `tmux switch-client` on the most recently active client when one exists, falling back to the previous behaviour when no client is attached.
+
 ## [2.2.3] - 2026-04-27
 
 ### Fixed
