@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Exact commit to validate for a manual release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Python tests and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Test
+        run: python -m pytest
+      - name: Build and verify installable workflow
+        run: python scripts/build_workflow.py
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tmux-sessions-workflow
+          path: dist/Tmux Sessions.alfredworkflow
+          if-no-files-found: error
+          retention-days: 14
+
+  applescript:
+    name: AppleScript compilation
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - name: Install application dictionaries
+        run: |
+          brew install --cask alfred ghostty iterm2
+          # Resolve the script's "Alfred" name without first launching the app.
+          mv '/Applications/Alfred 5.app' /Applications/Alfred.app
+          # A fresh runner has not discovered the installed apps through Finder.
+          for app in /Applications/Alfred.app /Applications/Ghostty.app /Applications/iTerm.app; do
+            /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+          done
+      - name: Compile without executing terminal actions
+        run: python3 scripts/check_applescript.py --include-iterm
+
+  without-iterm:
+    name: Without iTerm (advisory)
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - name: Install application dictionaries except iTerm
+        run: |
+          brew install --cask alfred ghostty
+          mv '/Applications/Alfred 5.app' /Applications/Alfred.app
+          for app in /Applications/Alfred.app /Applications/Ghostty.app; do
+            /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+          done
+      - name: Verify this runner has no iTerm installation
+        run: |
+          if mdfind 'kMDItemCFBundleIdentifier == "com.googlecode.iterm2"' | grep -q . || [ -d /Applications/iTerm.app ]; then
+            echo '::error::iTerm is installed; this runner cannot test the missing-iTerm case.'
+            exit 1
+          fi
+      # Remove continue-on-error once the compilation fix from PR #5 lands.
+      - name: Compile without iTerm
+        id: compile
+        continue-on-error: true
+        run: python3 scripts/check_applescript.py
+      - name: Report known compatibility failure
+        if: steps.compile.outcome == 'failure'
+        run: |
+          echo '::warning::Compilation without iTerm failed. This remains advisory until the fix from PR #5 lands.'
+          echo '### Compilation without iTerm failed (advisory)' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Required compilation with iTerm is checked separately. Make this check blocking after the missing-iTerm fix lands.' >> "$GITHUB_STEP_SUMMARY"

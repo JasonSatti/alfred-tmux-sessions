@@ -151,10 +151,15 @@ The workflow consists of:
 ```bash
 git clone https://github.com/JasonSatti/alfred-tmux-sessions.git
 cd alfred-tmux-sessions
-
-# Import workflow files manually into Alfred
-# Or modify and export your own .alfredworkflow
+python3 scripts/build_workflow.py
 ```
+
+Open `dist/Tmux Sessions.alfredworkflow` to install the build. It contains the
+current scripts from `src/` and the configuration and icons from `workflow/`.
+The root-level `.alfredworkflow` file is a historical release export.
+
+See [Contributing](CONTRIBUTING.md) for tests, CI artifacts, manual terminal checks,
+and the manually triggered draft-release process.
 
 ## License
 

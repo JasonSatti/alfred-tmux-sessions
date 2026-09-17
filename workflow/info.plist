@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>com.jsatti.tmux-sessions</string>
+	<key>category</key>
+	<string>Productivity</string>
+	<key>connections</key>
+	<dict>
+		<key>5ECF68FD-FD82-4A33-8DDC-7E3209B5C92E</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>502FF0CB-87D2-4CE5-B740-90ED0A0B83AF</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>Jason Satti</string>
+	<key>description</key>
+	<string>Quickly open tmux sessions. A powerful Alfred workflow for complete tmux session management with create, attach, detach, and delete functionality.</string>
+	<key>disabled</key>
+	<false/>
+	<key>name</key>
+	<string>Tmux Sessions</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<true/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>68</integer>
+				<key>keyword</key>
+				<string>tmux</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string></string>
+				<key>script</key>
+				<string></string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>Search tmux sessions</string>
+				<key>title</key>
+				<string>Tmux Sessions</string>
+				<key>type</key>
+				<integer>9</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>5ECF68FD-FD82-4A33-8DDC-7E3209B5C92E</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>68</integer>
+				<key>script</key>
+				<string></string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>6</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>502FF0CB-87D2-4CE5-B740-90ED0A0B83AF</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string>A powerful Alfred workflow for complete tmux session management with multi-terminal support (iTerm2, Ghostty, Terminal.app).&#32;
+
+List, create, attach, detach, and delete sessions with rich status info. Shows attached/detached status, window count, and activity times. Smart sorting puts active sessions first. Create linked sessions for independent window navigation across multiple terminal windows. Auto-detects your preferred terminal or manually configure in workflow settings.
+
+Perfect for developers juggling multiple tmux sessions.
+
+Use Enter to attach, ⇧+Enter for linked sessions, ⌘+Enter to delete, ⌃+Enter to detach.</string>
+	<key>uidata</key>
+	<dict>
+		<key>502FF0CB-87D2-4CE5-B740-90ED0A0B83AF</key>
+		<dict>
+			<key>xpos</key>
+			<real>425.0</real>
+			<key>ypos</key>
+			<real>140.0</real>
+		</dict>
+		<key>5ECF68FD-FD82-4A33-8DDC-7E3209B5C92E</key>
+		<dict>
+			<key>xpos</key>
+			<real>185.0</real>
+			<key>ypos</key>
+			<real>140.0</real>
+		</dict>
+	</dict>
+	<key>userconfigurationconfig</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>auto</string>
+				<key>pairs</key>
+				<array>
+					<array>
+						<string>Auto (Detect Best Available)</string>
+						<string>auto</string>
+					</array>
+					<array>
+						<string>iTerm2</string>
+						<string>iterm</string>
+					</array>
+					<array>
+						<string>Ghostty</string>
+						<string>ghostty</string>
+					</array>
+					<array>
+						<string>Terminal.app</string>
+						<string>terminal</string>
+					</array>
+				</array>
+			</dict>
+			<key>description</key>
+			<string>Choose which terminal to use for tmux sessions. Auto will detect the best available terminal</string>
+			<key>label</key>
+			<string>Terminal Application</string>
+			<key>type</key>
+			<string>popupbutton</string>
+			<key>variable</key>
+			<string>terminal_app</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string></string>
+				<key>placeholder</key>
+				<string>auto</string>
+				<key>required</key>
+				<false/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Choose which shell to use for new tmux sessions. Auto will detect your terminal's shell</string>
+			<key>label</key>
+			<string>Default Shell</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>default_shell</string>
+		</dict>
+	</array>
+	<key>variablesdontexport</key>
+	<array/>
+	<key>version</key>
+	<string>2.2.3</string>
+	<key>webaddress</key>
+	<string>https://github.com/JasonSatti/alfred-tmux-sessions</string>
+</dict>
+</plist>
