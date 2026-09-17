@@ -252,6 +252,21 @@ on attachSession(sessionName)
         display notification "Session '" & sessionName & "' not found" with title "Tmux Error"
         return
     end try
+    -- If a terminal already has a tmux client attached, switch that client instead of
+    -- typing "tmux attach" into it (which fails inside tmux and can land in a running program).
+    try
+        set tmuxPath to my resolveTmuxPath()
+        set clientTTY to do shell script quoted form of tmuxPath & " list-clients -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2"
+        if clientTTY is not "" then
+            do shell script quoted form of tmuxPath & " switch-client -c " & quoted form of clientTTY & " -t " & quoted form of sessionName
+            set selectedTerminal to resolveTerminal()
+            tell application selectedTerminal to activate
+            return
+        end if
+    on error errorMessage
+        display notification "Could not switch client: " & errorMessage with title "Tmux Error"
+        return
+    end try
     try
         set cmd to my buildHelperCommand("attach " & quoted form of sessionName)
         my openTerminalSession(cmd)
@@ -338,37 +353,39 @@ on openTerminalSession(terminalCommand)
 end openTerminalSession
 
 on openInITerm(tmuxCommand)
+    -- iTerm terminology is compiled lazily via "run script" so this workflow still
+    -- compiles (and runs for other terminals) on machines without iTerm installed.
     try
-        -- Detect whether iTerm is already running; activating a cold iTerm
-        -- auto-creates a default window, so creating another would yield two.
-        tell application "System Events"
-            set itermRunning to (exists (processes where name is "iTerm2")) or (exists (processes where name is "iTerm"))
-        end tell
-
-        tell application "iTerm"
-            activate
-
-            if not itermRunning then
-                -- iTerm just launched and auto-created a window; reuse it
-                delay WINDOW_INIT_DELAY
-                tell current session of current window
-                    write text tmuxCommand
-                end tell
-            else if my isTerminalRunningAndFrontmost("iTerm") and (count of windows) > 0 then
-                -- Use current window/session
-                tell current session of current window
-                    write text tmuxCommand
-                end tell
-            else
-                -- iTerm running but not frontmost or no windows: create one
-                set newWindow to (create window with default profile)
-                delay WINDOW_INIT_DELAY
-                tell current session of newWindow
-                    write text tmuxCommand
-                end tell
-            end if
-        end tell
-
+        set itermScript to "on run argv
+    set tmuxCommand to item 1 of argv
+    tell application \"System Events\"
+        set itermRunning to (exists (processes where name is \"iTerm2\")) or (exists (processes where name is \"iTerm\"))
+    end tell
+    tell application \"System Events\"
+        set frontApp to name of first application process whose frontmost is true
+    end tell
+    set isFront to (frontApp is \"iTerm2\" or frontApp is \"iTerm\")
+    tell application \"iTerm\"
+        activate
+        if not itermRunning then
+            delay 0.2
+            tell current session of current window
+                write text tmuxCommand
+            end tell
+        else if isFront and (count of windows) > 0 then
+            tell current session of current window
+                write text tmuxCommand
+            end tell
+        else
+            set newWindow to (create window with default profile)
+            delay 0.2
+            tell current session of newWindow
+                write text tmuxCommand
+            end tell
+        end if
+    end tell
+end run"
+        run script itermScript with parameters {tmuxCommand}
     on error errorMessage
         display notification "Failed to open iTerm: " & errorMessage with title "iTerm Error"
     end try
