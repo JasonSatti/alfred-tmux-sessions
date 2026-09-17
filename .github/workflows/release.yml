@@ -1,0 +1,91 @@
+name: Draft release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag on main, such as v2.2.4
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release tag
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      commit: ${{ steps.tag.outputs.commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require an existing version tag on main
+        id: tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo '::error::Use a version tag such as v2.2.4.'
+            exit 1
+          fi
+          commit=$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")
+          git merge-base --is-ancestor "$commit" origin/main
+          git checkout --detach "$commit"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import plistlib
+          import re
+
+          tag = os.environ['RELEASE_TAG']
+          version = plistlib.loads(Path('workflow/info.plist').read_bytes())['version']
+          if tag != f'v{version}':
+              raise SystemExit(f'Tag {tag} does not match workflow version {version}')
+          changelog = Path('CHANGELOG.md').read_text()
+          if not re.search(rf'^## \[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}$', changelog, re.M):
+              raise SystemExit('Add a dated CHANGELOG entry for this version before releasing')
+          PY
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+  checks:
+    name: Release checks
+    needs: validate
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.validate.outputs.commit }}
+
+  draft:
+    name: Create draft release
+    needs: [validate, checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: tmux-sessions-workflow
+          path: artifact
+      - name: Create draft with the tested workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          TESTED_COMMIT: ${{ needs.validate.outputs.commit }}
+        run: |
+          current=$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)
+          if [ "$current" != "$TESTED_COMMIT" ]; then
+            echo '::error::The release tag changed after validation. Run the workflow again.'
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" 'artifact/Tmux Sessions.alfredworkflow' \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --draft --generate-notes \
+            --title "$RELEASE_TAG"
